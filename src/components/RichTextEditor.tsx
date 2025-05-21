@@ -24,9 +24,17 @@ const MentionList = ({ items, command, query }: SuggestionProps) => {
             className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center space-x-2"
             onClick={() => command(item)}
           >
-            <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold">
-              {item.username.charAt(0).toUpperCase()}
-            </div>
+            {item.avatar_url ? (
+              <img
+                src={item.avatar_url}
+                alt={item.username}
+                className="h-8 w-8 rounded-full object-cover"
+              />
+            ) : (
+              <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold">
+                {item.username.charAt(0).toUpperCase()}
+              </div>
+            )}
             <div>
               <div className="font-medium">{item.full_name || item.username}</div>
               <div className="text-sm text-gray-500">@{item.username}</div>
@@ -45,6 +53,7 @@ interface RichTextEditorProps {
   onChange?: (content: string) => void;
   placeholder?: string;
   minHeight?: string;
+  onMention?: (userId: string) => void;
 }
 
 const RichTextEditor: React.FC<RichTextEditorProps> = ({
@@ -52,6 +61,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   onChange,
   placeholder = 'Write something...',
   minHeight = '100px',
+  onMention,
 }) => {
   const getSuggestions = useCallback(async (query: string) => {
     if (!query || query.length < 2) return [];
@@ -122,6 +132,13 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
                 popup[0].destroy();
                 component.destroy();
               },
+            };
+          },
+          onSelect: ({ item }) => {
+            onMention?.(item.id);
+            return {
+              id: item.id,
+              label: `@${item.username}`,
             };
           },
         },

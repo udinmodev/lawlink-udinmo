@@ -97,6 +97,15 @@ export type Follower = {
   following?: Profile;
 };
 
+export type Mention = {
+  id: string;
+  post_id: string | null;
+  comment_id: string | null;
+  mentioned_by: string;
+  mentioned_user: string;
+  created_at: string;
+};
+
 // Realtime channel types
 export type RealtimeNotification = {
   type: 'group_invite' | 'new_post' | 'mention' | 'new_follower';
