@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { Image } from 'lucide-react';
 import toast from 'react-hot-toast';
+import RichTextEditor from './RichTextEditor';
 
 interface CreatePostFormProps {
   onPostCreated: () => void;
@@ -14,6 +15,7 @@ const CreatePostForm: React.FC<CreatePostFormProps> = ({ onPostCreated }) => {
   const [imageUrl, setImageUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showImageInput, setShowImageInput] = useState(false);
+  const [mentionedUsers, setMentionedUsers] = useState<Set<string>>(new Set());
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,19 +32,40 @@ const CreatePostForm: React.FC<CreatePostFormProps> = ({ onPostCreated }) => {
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase.from('posts').insert([
-        {
-          user_id: user.id,
-          content: content.trim(),
-          image_url: imageUrl.trim() || null,
-        },
-      ]);
+      // Insert the post
+      const { data: postData, error: postError } = await supabase
+        .from('posts')
+        .insert([
+          {
+            user_id: user.id,
+            content: content.trim(),
+            image_url: imageUrl.trim() || null,
+          },
+        ])
+        .select('id')
+        .single();
 
-      if (error) throw error;
+      if (postError) throw postError;
+
+      // Create mentions for all mentioned users
+      if (mentionedUsers.size > 0 && postData?.id) {
+        const mentions = Array.from(mentionedUsers).map(userId => ({
+          post_id: postData.id,
+          mentioned_by: user.id,
+          mentioned_user: userId,
+        }));
+
+        const { error: mentionsError } = await supabase
+          .from('mentions')
+          .insert(mentions);
+
+        if (mentionsError) throw mentionsError;
+      }
 
       setContent('');
       setImageUrl('');
       setShowImageInput(false);
+      setMentionedUsers(new Set());
       toast.success('Post created successfully!');
       onPostCreated();
     } catch (error: any) {
@@ -53,16 +76,18 @@ const CreatePostForm: React.FC<CreatePostFormProps> = ({ onPostCreated }) => {
     }
   };
 
+  const handleMention = (userId: string) => {
+    setMentionedUsers(prev => new Set([...prev, userId]));
+  };
+
   return (
     <div className="bg-white">
       <form onSubmit={handleSubmit}>
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
+        <RichTextEditor
+          content={content}
+          onChange={setContent}
           placeholder="What's on your mind?"
-          className="w-full px-0 py-2 bg-transparent border-0 resize-none placeholder:text-gray-500 focus:ring-0 text-sm"
-          rows={2}
-          disabled={isSubmitting}
+          onMention={handleMention}
         />
 
         {showImageInput && (
